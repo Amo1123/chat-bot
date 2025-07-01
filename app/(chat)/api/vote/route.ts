@@ -26,7 +26,7 @@ import { getWeather } from '@/lib/ai/tools/get-weather';
 import { isProductionEnvironment } from '@/lib/constants';
 import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
-import { postRequestBodySchema, type PostRequestBody } from './schema';
+import { postRequestBodySchema, type PostRequestBody } from './schema'; // この import が app/(chat)/api/chat/schema.ts を指していることを確認
 import { geolocation } from '@vercel/functions';
 import {
   createResumableStreamContext,
@@ -279,6 +279,7 @@ export async function POST(request: Request) {
       return error.toResponse();
     }
     // 予期せぬエラーの場合、汎用的な内部サーバーエラーを返す
+    // ChatSDKError の定義に 'internal_server_error:api' が含まれていることを確認してください。
     console.error('Unhandled error in POST /api/chat:', error);
     return new ChatSDKError('internal_server_error:api', 'An unexpected error occurred.').toResponse();
   }
