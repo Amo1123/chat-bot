@@ -243,30 +243,28 @@ export async function POST(request: Request) {
 
     // ストリームコンテキストの取得とレスポンスの返却
     const streamContext = getStreamContext();
-    let responseStreamToReturn: ReadableStream | null = null; // 返すストリームを初期化
 
+    // resumableStream が利用可能な場合、それを使用する
     if (streamContext) {
-      // resumableStream が Promise を返すので await する
-      const resumableStreamResult = await streamContext.resumableStream(streamId, () => stream);
-      if (resumableStreamResult) {
-        responseStreamToReturn = resumableStreamResult;
-      } else {
-        // resumableStream が null を返した場合のフォールバック
-        console.warn('resumableStream returned null, falling back to direct stream.');
-        responseStreamToReturn = stream;
+      try {
+        // resumableStream は Promise<ReadableStream | null> を返す
+        const resumableStreamResult = await streamContext.resumableStream(streamId, () => stream);
+        if (resumableStreamResult) {
+          return new Response(resumableStreamResult);
+        } else {
+          // resumableStream が null を返した場合、通常のストリームにフォールバック
+          console.warn('resumableStream returned null, falling back to direct stream.');
+          return new Response(stream);
+        }
+      } catch (resumableStreamError) {
+        // resumableStream の設定または実行中にエラーが発生した場合、通常のストリームにフォールバック
+        console.error('Error during resumableStream setup, falling back to direct stream:', resumableStreamError);
+        return new Response(stream);
       }
     } else {
-      // resumableStream が利用できない場合、通常のストリームを返す
-      responseStreamToReturn = stream;
-    }
-
-    // 最終的に有効なストリームが生成されたことを確認して返す
-    if (responseStreamToReturn) {
-        return new Response(responseStreamToReturn);
-    } else {
-        // ここに到達した場合、ストリームの生成に致命的な問題が発生したことを意味する
-        console.error('Critical error: No valid stream generated for response.');
-        return new ChatSDKError('internal_server_error:api', 'Failed to generate a valid streaming response.').toResponse();
+      // streamContext が利用できない場合 (例: REDIS_URL がないなど)、通常のストリームを返す
+      console.warn('Resumable stream context not available, returning direct stream.');
+      return new Response(stream);
     }
 
   } catch (error) {
