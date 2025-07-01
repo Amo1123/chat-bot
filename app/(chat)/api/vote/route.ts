@@ -241,31 +241,37 @@ export async function POST(request: Request) {
       },
     });
 
-    // ストリームコンテキストの取得とレスポンスの返却
+    // ストリームコンテキストの取得
     const streamContext = getStreamContext();
 
-    // resumableStream が利用可能な場合、それを使用する
+    // 最終的に返すストリームを決定
+    let finalStream: ReadableStream;
+
     if (streamContext) {
       try {
-        // resumableStream は Promise<ReadableStream | null> を返す
+        // resumableStream が Promise<ReadableStream | null> を返す
         const resumableStreamResult = await streamContext.resumableStream(streamId, () => stream);
         if (resumableStreamResult) {
-          return new Response(resumableStreamResult);
+          finalStream = resumableStreamResult;
         } else {
           // resumableStream が null を返した場合、通常のストリームにフォールバック
           console.warn('resumableStream returned null, falling back to direct stream.');
-          return new Response(stream);
+          finalStream = stream;
         }
       } catch (resumableStreamError) {
         // resumableStream の設定または実行中にエラーが発生した場合、通常のストリームにフォールバック
         console.error('Error during resumableStream setup, falling back to direct stream:', resumableStreamError);
-        return new Response(stream);
+        finalStream = stream;
       }
     } else {
       // streamContext が利用できない場合 (例: REDIS_URL がないなど)、通常のストリームを返す
       console.warn('Resumable stream context not available, returning direct stream.');
-      return new Response(stream);
+      finalStream = stream;
     }
+
+    // 最終的に決定されたストリームを Response オブジェクトとして返す
+    // ここで確実に Response を返すことで、"No response is returned" エラーを回避する
+    return new Response(finalStream);
 
   } catch (error) {
     // メインのロジックで発生したエラーをキャッチ
