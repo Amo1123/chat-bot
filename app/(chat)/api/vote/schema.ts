@@ -1,21 +1,30 @@
 import { z } from 'zod';
+import { type Message } from 'ai'; // 'ai' SDKのMessage型をインポートする必要があるかもしれません
 
 /**
- * PATCH リクエストのボディのスキーマを定義します。
- * このスキーマは、/api/vote エンドポイントへの PATCH リクエストが受け取るデータの構造を検証します。
+ * POST リクエストのボディのスキーマを定義します。
+ * これは /api/chat エンドポイントへの POST リクエストが受け取るデータの構造を検証します。
  */
-export const patchRequestBodySchema = z.object({
-  // 'chatId' は必須の文字列で、空であってはなりません。
-  chatId: z.string().min(1, 'chatId is required.'),
-  // 'messageId' は必須の文字列で、空であってはなりません。
-  messageId: z.string().min(1, 'messageId is required.'),
-  // 'type' は 'up' または 'down' のいずれかの文字列である必要があります。
-  type: z.union([z.literal('up'), z.literal('down')]),
+export const postRequestBodySchema = z.object({
+  // チャットIDは必須の文字列
+  id: z.string().min(1, 'Chat ID is required.'),
+  // メッセージは 'ai' SDK の Message 型に合う構造を持つオブジェクト
+  // 実際の Message 型の構造に合わせて調整してください
+  message: z.object({
+    id: z.string(),
+    role: z.string(), // 'user' など
+    content: z.string().optional(), // テキストコンテンツ
+    parts: z.array(z.any()), // MessagePart の配列
+    experimental_attachments: z.array(z.any()).optional(), // 添付ファイルがある場合
+    // 他の Message プロパティがあればここに追加
+  }),
+  // 選択されたチャットモデルは必須の文字列
+  selectedChatModel: z.string().min(1, 'Selected chat model is required.'),
+  // 選択された可視性タイプは必須の文字列
+  selectedVisibilityType: z.string().min(1, 'Selected visibility type is required.'),
 });
 
 /**
- * patchRequestBodySchema から TypeScript の型を推論します。
- * これにより、リクエストボディのデータに型安全性がもたらされ、
- * 開発時のエラーを減らすことができます。
+ * postRequestBodySchema から TypeScript の型を推論します。
  */
-export type PatchRequestBody = z.infer<typeof patchRequestBodySchema>;
+export type PostRequestBody = z.infer<typeof postRequestBodySchema>;
